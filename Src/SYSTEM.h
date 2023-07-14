@@ -1,34 +1,22 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 #include <Logger.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+
+using Entity = uint64_t;
+constexpr Entity MAX_ENTITIES = 1024;
+using EntityType = std::string;
 
 class Engine;
 class SYSTEM
 {
     public:
-        SYSTEM()
-        {
-            this->engine = nullptr;
-        }
-        ~SYSTEM()
-        {
-            this->engine = nullptr;
-        }
-        static void Set_Engine_Ptr(Engine *enginePtr)
-        {
-            engine = enginePtr;
-        }
+        SYSTEM(Engine& engine):engine(engine)
+        {}
 
-        static Engine* Get_Engine()
-        {
-            if(engine == nullptr)
-            {
-                Logger::log(LogLevel::ERROR, "Engine pointer no set!");
-            }
-            return engine;
-        }
     protected:
-    private:
-        static Engine* engine;
+        Engine& engine;
 };
 #endif // !SYSTEM_H

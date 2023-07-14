@@ -8,8 +8,11 @@
 class PhysicsSYSTEM: public SYSTEM
 {
     public:
-        PhysicsSYSTEM();
+        PhysicsSYSTEM(Engine& engine);
         ~PhysicsSYSTEM();
+        
+        void Update_Entities_Position();
+        void Update();
     private:
 };
 

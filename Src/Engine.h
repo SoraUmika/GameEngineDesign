@@ -1,13 +1,13 @@
 #ifndef ENGINE_H
 #define ENGINE_H
-#include <stdio.h>
 #include <EventSYSTEM.h>
 #include <GraphicsSYSTEM.h>
 #include <FileSYSTEM.h>
 #include <EntitySYSTEM.h>
 #include <ComponentSYSTEM.h>
 #include <PhysicsSYSTEM.h>
-#include <Components.h>
+#include <TimeSYSTEM.h>
+#include <WorldSYSTEM.h>
 class Engine
 {
 	public:
@@ -21,16 +21,36 @@ class Engine
 		void Render();
 		
 		void Shut_Down();
+		EventSYSTEM& Get_EventSYSTEM();
+		GraphicsSYSTEM& Get_GraphicsSYSTEM();
+		FileSYSTEM& Get_FileSYSTEM();
+		ComponentSYSTEM& Get_ComponentSYSTEM();
+		EntitySYSTEM& Get_EntitySYSTEM();
+		PhysicsSYSTEM& Get_PhysicsSYSTEM();
+		TimeSYSTEM& Get_TimeSYSTEM();
+		WorldSYSTEM& Get_WorldSYSTEM();
+
+		struct Internal_Variables
+		{
+			uint64_t frames_count{};
+			uint64_t update_count{};
+		};
 		
-		template <typename T>
-		T& Get_System() {
-			return std::get<T>(systems);
-		}		
 	private:
-		std::tuple<EventSYSTEM, GraphicsSYSTEM, FileSYSTEM, EntitySYSTEM, ComponentSYSTEM, PhysicsSYSTEM> systems;
+		EventSYSTEM SYSTEM_event;
+		GraphicsSYSTEM SYSTEM_graphics;
+		FileSYSTEM SYSTEM_file;
+		ComponentSYSTEM SYSTEM_component;
+		EntitySYSTEM SYSTEM_entity;
+		PhysicsSYSTEM SYSTEM_physics;
+		TimeSYSTEM SYSTEM_time;
+		WorldSYSTEM SYSTEM_world;
+		
 		bool run;
-		const int UPDATE_PER_SECOND = 60;
+		const int UPDATE_PER_SECOND = 50;
 		Entity FPS_entity;
+
+		Internal_Variables intenal_variables;
 };
 
 #endif // !ENGINE_H

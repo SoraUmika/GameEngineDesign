@@ -1,6 +1,6 @@
 #include <EventSYSTEM.h>
 #include <Engine.h>
-EventSYSTEM::EventSYSTEM()
+EventSYSTEM::EventSYSTEM(Engine& engine): SYSTEM(engine)
 {
 
 
@@ -17,9 +17,21 @@ void EventSYSTEM::Check_Default_Events()
 	{
 		if (SDLEvents.events[i].type == SDL_QUIT)
 		{	
-			Get_Engine()->Shut_Down();
+			engine.Shut_Down();
 		}
-	}   
+	}
+}
+
+void EventSYSTEM::Process_Entities_Input()
+{
+    auto& compSYSTEM = engine.Get_ComponentSYSTEM();
+    auto intputComp_array = compSYSTEM.Get_Component_Array<InputComponent>().get();
+    for(auto it = intputComp_array->begin(); it != intputComp_array->end(); ++it)
+    {
+        Entity ID = it->first;
+        auto& inputComp = compSYSTEM.Get_Component<InputComponent>(ID);
+		inputComp.action(ID);
+    }	
 }
 
 void EventSYSTEM::Update_SDL_Events()
@@ -36,4 +48,12 @@ void EventSYSTEM::Clear_SDL_Events()
 Event<SDL_Event> EventSYSTEM::Get_SDL_Events()
 {
     return SDLEvents;
+}
+
+void EventSYSTEM::Update()
+{
+	Update_SDL_Events();
+	Check_Default_Events();
+	Process_Entities_Input();
+	Clear_SDL_Events();
 }

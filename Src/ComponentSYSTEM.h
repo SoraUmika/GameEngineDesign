@@ -1,10 +1,13 @@
 #ifndef COMPONENTSYSTEM_H
 #define COMPONENTSYSTEM_H
+#include <SYSTEM.h>
 #include <typeindex>
 #include <unordered_map>
-#include <Logger.h>
-#include <EntitySYSTEM.h>
 #include <cassert>
+#include <functional>
+#include <memory>
+#include <Components.h>
+#include <JSON/json.hpp>
 
 using ComponentType = std::size_t;
 
@@ -16,7 +19,8 @@ class IComponentArray
     private:
 };
 
-template <typename T>
+
+template <typename T, std::size_t N>
 class ComponentArray: public IComponentArray
 {
     public:
@@ -47,25 +51,30 @@ class ComponentArray: public IComponentArray
         T& Get_Data(Entity entity)
         {
             assert(entity_to_index_map.find(entity) != entity_to_index_map.end() && "Retrieving non-existent component.");
-            // Return the data
             return component_array[entity_to_index_map[entity]];
         }
-
         bool Has_Data(Entity entity)
         {
             return entity_to_index_map.find(entity) != entity_to_index_map.end();
         }
-
         void Entity_Destroyed(Entity entity) override
         {
             if (entity_to_index_map.find(entity) != entity_to_index_map.end())
-            {
-                // Remove the entity's component if it existed
+            { 
                 Remove_Data(entity);
             }
         }
+        typename std::unordered_map<Entity, size_t>::iterator begin() 
+        {
+            return entity_to_index_map.begin();
+        }
+        typename std::unordered_map<Entity, size_t>::iterator end() 
+        {
+            return entity_to_index_map.end();
+        }
+    
     private:
-        std::array<T, MAX_ENTITIES> component_array;
+        std::array<T, N> component_array;
         std::unordered_map<Entity,size_t> entity_to_index_map;
         std::unordered_map<size_t, Entity> index_to_entity_map;
         size_t size{};
@@ -74,31 +83,81 @@ class ComponentArray: public IComponentArray
 class ComponentSYSTEM
 {
     public:
-        template<typename T>
-        void Register_Component_Type()
+        template<typename T, std::size_t N>
+        void Register_Component_Type(const std::string& componentType, std::function<void(Entity, const std::string&)> customBuilder=nullptr)
         {
-            const std::type_index typeName = std::type_index(typeid(T));
-            assert(component_types.find(typeName) == component_types.end() && "Registering component type more than once.");
-            component_types.insert({typeName, next_component_type});
-            component_arrays.insert({typeName, std::make_shared<ComponentArray<T>>()});
-            ++next_component_type;
-            Logger::log(LogLevel::INFO, "Component type %s registered", typeid(T).name());
+            const std::type_index typeIndex = std::type_index(typeid(T));
+            if(component_types.find(typeIndex) != component_types.end())
+            {
+                Logger::log(LogLevel::WARNING, "Registering component type %s falied, type has already been registered.", componentType.c_str());
+            }
+            else
+            {
+                auto it = std::find_if(component_names.begin(), component_names.end(), [componentType](const auto& pair) {
+                    return pair.second == componentType;
+                });
+                if (it != component_names.end())
+                {
+                    Logger::log(LogLevel::WARNING, "Registering component type %s falied, type name has already been registered.", componentType.c_str());
+                }
+                else
+                {
+                    component_types.insert({typeIndex, next_component_type});
+                    component_arrays.insert({typeIndex, std::make_shared<ComponentArray<T,N>>()});
+                    component_names.insert({typeIndex, componentType});
+                    std::function<void(Entity, const std::string&)> builder = [this](Entity entiy, const std::string& componentInfo="")
+                    {
+                        T compType;
+                        if(!componentInfo.empty()){compType = T(componentInfo);}
+                        this->Add_Component<T>(entiy, compType);
+                    };
+                    if(customBuilder != nullptr){builder = customBuilder;}
+                    component_builders.insert({componentType, builder});
+                    ++next_component_type;
+                    Logger::log(LogLevel::INFO, "Component type %s registered", componentType.c_str());
+                }
+            }
         }
-        
+
         template<typename T>
         ComponentType Get_Component_Type()
         {
-            std::type_index typeName = std::type_index(typeid(T));
+            const std::type_index typeName = std::type_index(typeid(T));
             assert(component_types.find(typeName) != component_types.end() && "Component not registered before use.");
-            // Return this component's type - used for creating signatures
             return component_types[typeName];
         }
-        
+
+        template<typename T>
+        std::string Get_Component_Name()
+        {
+            const std::type_index typeName = std::type_index(typeid(T));
+            assert(component_types.find(typeName) != component_types.end() && "Component not registered before use.");
+            return component_names[typeName];           
+        }
+
+        bool Has_Component_Type(const std::string& componentType)
+        {
+            if(component_builders.find(componentType) != component_builders.end()){return true;}
+            else{return false;}
+        }
+
         template<typename T>
         void Add_Component(Entity entity, T component)
         {
             Get_Component_Array<T>()->Insert_Data(entity, component);
-            Logger::log(LogLevel::INFO, "Added component %s to entity %d", typeid(T).name(), entity);
+            Logger::log(LogLevel::INFO, "Added component %s to entity %d", Get_Component_Name<T>().c_str(), entity);
+        }
+
+        void Add_Component_By_Name(Entity entity, const std::string& component, const std::string& componentInfo="")
+        {
+            if(component_builders.find(component) == component_builders.end())
+            {
+                Logger::log(LogLevel::WARNING, "Adding component %s by name failed, component name does not exists", component.c_str());
+            }
+            else
+            {
+                component_builders[component](entity,componentInfo);
+            }       
         }
         
         template<typename T>
@@ -112,6 +171,14 @@ class ComponentSYSTEM
         T& Get_Component(Entity entity)
         {
             return Get_Component_Array<T>()->Get_Data(entity);
+        }
+
+        template<typename T>
+        std::shared_ptr<ComponentArray<T>> Get_Component_Array()
+        {
+            std::type_index typeIndex = std::type_index(typeid(T));
+            assert(component_types.find(typeIndex) != component_types.end() && "Component not registered before use.");
+            return std::static_pointer_cast<ComponentArray<T>>(component_arrays[typeIndex]);
         }
 
         void Remove_All_Entity_Components(Entity entity)
@@ -133,15 +200,10 @@ class ComponentSYSTEM
     private:
         std::unordered_map<std::type_index, ComponentType> component_types{};
         std::unordered_map<std::type_index, std::shared_ptr<IComponentArray>> component_arrays{};
+        std::unordered_map<std::string, std::function<void(Entity, const std::string&)>> component_builders;
+        std::unordered_map<std::type_index, std::string> component_names;
         ComponentType next_component_type{};
 
-        template<typename T>
-        std::shared_ptr<ComponentArray<T>> Get_Component_Array()
-        {
-            std::type_index typeName = std::type_index(typeid(T));
-            assert(component_types.find(typeName) != component_types.end() && "Component not registered before use.");
-            return std::static_pointer_cast<ComponentArray<T>>(component_arrays[typeName]);
-        }
 };
 
 #endif // !COMPONENT_H
