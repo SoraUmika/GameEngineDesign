@@ -19,8 +19,7 @@ class IComponentArray
     private:
 };
 
-
-template <typename T, std::size_t N>
+template <typename T>
 class ComponentArray: public IComponentArray
 {
     public:
@@ -72,9 +71,8 @@ class ComponentArray: public IComponentArray
         {
             return entity_to_index_map.end();
         }
-    
     private:
-        std::array<T, N> component_array;
+        std::array<T, MAX_ENTITIES> component_array;
         std::unordered_map<Entity,size_t> entity_to_index_map;
         std::unordered_map<size_t, Entity> index_to_entity_map;
         size_t size{};
@@ -83,7 +81,7 @@ class ComponentArray: public IComponentArray
 class ComponentSYSTEM
 {
     public:
-        template<typename T, std::size_t N>
+        template<typename T>
         void Register_Component_Type(const std::string& componentType, std::function<void(Entity, const std::string&)> customBuilder=nullptr)
         {
             const std::type_index typeIndex = std::type_index(typeid(T));
@@ -103,7 +101,7 @@ class ComponentSYSTEM
                 else
                 {
                     component_types.insert({typeIndex, next_component_type});
-                    component_arrays.insert({typeIndex, std::make_shared<ComponentArray<T,N>>()});
+                    component_arrays.insert({typeIndex, std::make_shared<ComponentArray<T>>()});
                     component_names.insert({typeIndex, componentType});
                     std::function<void(Entity, const std::string&)> builder = [this](Entity entiy, const std::string& componentInfo="")
                     {

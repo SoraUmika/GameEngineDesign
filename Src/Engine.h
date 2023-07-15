@@ -8,6 +8,7 @@
 #include <PhysicsSYSTEM.h>
 #include <TimeSYSTEM.h>
 #include <WorldSYSTEM.h>
+#include <ScriptSYSTEM.h>
 class Engine
 {
 	public:
@@ -45,7 +46,7 @@ class Engine
 		PhysicsSYSTEM SYSTEM_physics;
 		TimeSYSTEM SYSTEM_time;
 		WorldSYSTEM SYSTEM_world;
-		
+		ScriptSYSTEM SYSTEM_script;
 		bool run;
 		const int UPDATE_PER_SECOND = 50;
 		Entity FPS_entity;

@@ -18,6 +18,7 @@ void EventSYSTEM::Check_Default_Events()
 		if (SDLEvents.events[i].type == SDL_QUIT)
 		{	
 			engine.Shut_Down();
+			break;
 		}
 	}
 }

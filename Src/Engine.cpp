@@ -6,7 +6,8 @@ SYSTEM_file(*this),
 SYSTEM_entity(*this),
 SYSTEM_physics(*this),
 SYSTEM_time(*this),
-SYSTEM_world(*this)
+SYSTEM_world(*this),
+SYSTEM_script(*this)
 {
 	Logger::initialize("log.txt");
 }
@@ -31,6 +32,8 @@ bool Engine::Init_SYSTEMS()
 		Get_JSON_Key<int>(config.at("window_size"), "x", 1920), Get_JSON_Key<int>(config.at("window_size"), "y", 1080));
 	SYSTEM_graphics.Init_Renderer(Get_JSON_Key<int>(config.at("resolution_size"), "x", 1920), Get_JSON_Key<int>(config.at("resolution_size"), "y", 1080));
 
+	SYSTEM_script.Init();
+	SYSTEM_script.Run_Script_From_File("Content/Scripts/test.lua");
 	SYSTEM_component.Register_Component_Type<TransformComponent>("Transform");
 	SYSTEM_component.Register_Component_Type<VelocityComponent>("Velocity");
 	SYSTEM_component.Register_Component_Type<TextureComponent>("Texture");
@@ -38,7 +41,6 @@ bool Engine::Init_SYSTEMS()
 	SYSTEM_component.Register_Component_Type<TextComponent>("Text");
 	SYSTEM_component.Register_Component_Type<InputComponent>("Input");
 	SYSTEM_component.Register_Component_Type<SpriteSheetComponent>("SpriteSheet");
-
 	std::function<void(Entity, const std::string&)> renderBuilder = [this](Entity entiy, const std::string& componentInfo="")
 	{
 		RenderComponent renderComp;
@@ -63,7 +65,7 @@ bool Engine::Init_SYSTEMS()
 		}
 		this->Get_ComponentSYSTEM().Add_Component<TileMapComponent>(entiy, tileMapComp);
 	};
-	SYSTEM_component.Register_Component_Type<TileMapComponent>("Tilemap", tileMapBuilder);
+	SYSTEM_component.Register_Component_Type<TileMapComponent>("Tilemap");
 
 	nlohmann::json entityTypeJson = SYSTEM_file.Read_Json_From_Files("Content/Entities/init.json");
 	SYSTEM_entity.Register_Entity_Types_From_Json(entityTypeJson);
