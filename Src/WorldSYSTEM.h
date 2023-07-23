@@ -9,7 +9,6 @@ class WorldSYSTEM: SYSTEM
         WorldSYSTEM(Engine& engine);
         ~WorldSYSTEM();
 
-        void Init_TileMaps_From_JSON(const nlohmann::json& json);
     private:
 };
 #endif // !WORLDSYSTEM_H

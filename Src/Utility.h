@@ -3,6 +3,9 @@
 #include <Logger.h>
 #include <JSON/json.hpp>
 #include <SDL2/SDL.h>
+#include <sol/sol.hpp>
+nlohmann::json Read_Json_From_Files(std::string path);
+
 template<typename T>
 T Get_JSON_Key(const nlohmann::json& json, const std::string& key, const T& default_value=T{})
 {
@@ -23,4 +26,5 @@ T Get_JSON_Key(const nlohmann::json& json, const std::string& key, const T& defa
 }
 
 SDL_Rect Get_Rect_From_JSON_OBJ(const nlohmann::json& json);
+
 #endif // !UTILITY_H

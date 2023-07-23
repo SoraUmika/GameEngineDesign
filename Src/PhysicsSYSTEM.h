@@ -11,6 +11,8 @@ class PhysicsSYSTEM: public SYSTEM
         PhysicsSYSTEM(Engine& engine);
         ~PhysicsSYSTEM();
         
+        bool Is_Collision(const SDL_Rect rect1, const SDL_Rect rect2);
+        
         void Update_Entities_Position();
         void Update();
     private:

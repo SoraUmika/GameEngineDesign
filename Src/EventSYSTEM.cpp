@@ -2,59 +2,108 @@
 #include <Engine.h>
 EventSYSTEM::EventSYSTEM(Engine& engine): SYSTEM(engine)
 {
-
-
+	Register_Event_Type("KEYSTATE");
 }
 EventSYSTEM::~EventSYSTEM()
 {
-
-    
 }
 
-void EventSYSTEM::Check_Default_Events()
+
+EventType EventSYSTEM::Register_Event_Type(const std::string& type_name)
 {
-	for(int i=0; i<SDLEvents.currentEventNum; i++)
+
+	if(type_map.find(type_name) == type_map.end())
 	{
-		if (SDLEvents.events[i].type == SDL_QUIT)
-		{	
-			engine.Shut_Down();
-			break;
+		EventType new_event_type = available_event_type;
+		type_map[type_name] = new_event_type;
+		available_event_type += 1;
+		Logger::log(LogLevel::INFO, "New event type %s registered with type code %d", type_name.c_str() ,new_event_type);
+		return new_event_type;
+	}else{
+		Logger::log(LogLevel::WARNING, "Event type %s registeration failed, already registered with type code %d", type_name.c_str(), type_map.at(type_name));
+		return 0;
+	}
+}
+
+EventCode EventSYSTEM::Get_Event_Type(const std::string& type_name)
+{
+	if(type_map.find(type_name) != type_map.end())
+	{
+		return type_map.at(type_name);
+	}else{
+		Logger::log(LogLevel::ERROR, "Cannot find event type %s with a valid type code", type_name.c_str());
+		return 0;
+	}
+}
+
+void EventSYSTEM::Push_Event(const Event& event)
+{
+	event_queue.push(event);
+}
+
+void EventSYSTEM::Poll_SDL_Events()
+{
+	const Uint8* key_state = SDL_GetKeyboardState(NULL);
+	for(int i=0; i<SDL_Scancode::SDL_NUM_SCANCODES; i++)
+	{
+		if(key_state[i] == 1)
+		{
+			Event new_event;
+			new_event.type = type_map.at("KEYSTATE");
+			KeyboardStateEvent keyboard_state = KeyboardStateEvent();
+			keyboard_state.scancode = static_cast<SDL_Scancode>(i);
+			new_event.data = keyboard_state;
+			event_queue.push(new_event);
+		}
+	}
+	if(SDL_PollEvent(&sdl_event)){
+		Event event;
+		event.type = sdl_event.type;
+		switch(event.type)
+		{
+			case SDL_QUIT:
+				event_queue.push(event);
+				break;
+			case SDL_KEYDOWN:
+			case SDL_KEYUP:
+				event.data = sdl_event.key;
+				event_queue.push(event);
+				break;
 		}
 	}
 }
 
-void EventSYSTEM::Process_Entities_Input()
+void EventSYSTEM::Poll_Events()
 {
-    auto& compSYSTEM = engine.Get_ComponentSYSTEM();
-    auto intputComp_array = compSYSTEM.Get_Component_Array<InputComponent>().get();
-    for(auto it = intputComp_array->begin(); it != intputComp_array->end(); ++it)
-    {
-        Entity ID = it->first;
-        auto& inputComp = compSYSTEM.Get_Component<InputComponent>(ID);
-		inputComp.action(ID);
-    }	
+
 }
 
-void EventSYSTEM::Update_SDL_Events()
+void EventSYSTEM::Handle_Events()
 {
-    SDL_PumpEvents();
-    SDLEvents.currentEventNum = SDL_PeepEvents(SDLEvents.events, 256, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
-}
-
-void EventSYSTEM::Clear_SDL_Events()
-{
-    SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
-}
-
-Event<SDL_Event> EventSYSTEM::Get_SDL_Events()
-{
-    return SDLEvents;
+	while(!event_queue.empty())
+	{
+		Event event = event_queue.front();	
+		if(event.type == SDL_QUIT){
+			engine.Shut_Down();
+			std::queue<Event> empty_queue;
+			std::swap(event_queue, empty_queue);
+			break;
+		}
+		auto& eventListener_array = *engine.Get_ComponentSYSTEM().Get_Component_Array<EventListenerComponent>().get();
+		for(auto it = eventListener_array.begin(); it != eventListener_array.end(); ++it)
+		{
+			Entity entity_ID = it->first;
+			int index = it->second;
+			auto& listener = eventListener_array.Get_Array().at(index);
+			listener.execute(event);
+		}
+		event_queue.pop();
+	}
 }
 
 void EventSYSTEM::Update()
 {
-	Update_SDL_Events();
-	Check_Default_Events();
-	Process_Entities_Input();
-	Clear_SDL_Events();
+	Poll_Events();
+	Poll_SDL_Events();
+	Handle_Events();
 }

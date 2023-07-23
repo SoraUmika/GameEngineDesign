@@ -4,9 +4,11 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
+#include <Events.h>
 
 using Entity = uint64_t;
-constexpr Entity MAX_ENTITIES = 1024;
+using EventCode = uint32_t;
+constexpr Entity MAX_ENTITIES = 65536;
 using EntityType = std::string;
 
 class Engine;

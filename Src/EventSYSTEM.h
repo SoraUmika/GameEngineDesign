@@ -1,28 +1,26 @@
 #ifndef EVENTSYSTEM_H
 #define EVENTSYSTEM_H
 #include <SYSTEM.h>
-
-template <typename EventType>
-class Event {
-    public:
-        EventType events[256];
-        int currentEventNum{};
-};
-
+#include <queue>
+#include <unordered_map>
 class EventSYSTEM: public SYSTEM
 {
     public:
         EventSYSTEM(Engine& engine);
         ~EventSYSTEM();
-        void Update_SDL_Events();
-        void Clear_SDL_Events();
-        void Check_Default_Events();
-        Event<SDL_Event> Get_SDL_Events();
-
-        void Process_Entities_Input();
+        EventCode Register_Event_Type(const std::string& type_name);
+        EventCode Get_Event_Type(const std::string& type_name);
+        void Push_Event(const Event& event);
         void Update();
     private:
-        Event<SDL_Event> SDLEvents;
+        SDL_Event sdl_event;
+        std::queue<Event> event_queue;
+        std::unordered_map<std::string, EventType> type_map;
+
+        EventType available_event_type = SDL_EventType::SDL_LASTEVENT + 1;
+        void Handle_Events();
+        void Poll_Events();
+        void Poll_SDL_Events();
 };
 
 #endif

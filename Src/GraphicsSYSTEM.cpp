@@ -19,7 +19,7 @@ GraphicsSYSTEM::~GraphicsSYSTEM()
     IMG_Quit();  
 }
 
-bool GraphicsSYSTEM::Init_Window(const char* program_title, int window_Size_x, int window_Size_y)
+bool GraphicsSYSTEM::Init_Window(const std::string& program_title, int window_Size_x, int window_Size_y)
 {
 	bool success = true;
 	if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -31,23 +31,29 @@ bool GraphicsSYSTEM::Init_Window(const char* program_title, int window_Size_x, i
 	{
 		this->window_size.x = window_Size_x;
 		this->window_size.y = window_Size_y;
-		this->window = SDL_CreateWindow(program_title, SDL_WINDOWPOS_CENTERED, 
+		this->window = SDL_CreateWindow(program_title.c_str(), SDL_WINDOWPOS_CENTERED, 
 			SDL_WINDOWPOS_CENTERED, window_Size_x, window_Size_y, SDL_WINDOW_SHOWN);
 		if (this->window == NULL)
 		{
             Logger::log(LogLevel::ERROR, "Window could not be created! SDL_Error: %s", SDL_GetError());
 			success = false;
 		}
+        else
+        {
+            Logger::log(LogLevel::INFO, "Window successfully initialized with width:%d height:%d", window_Size_x, window_Size_y);
+        }
 	}
 	return success;
 }
 
-bool GraphicsSYSTEM::Init_Renderer(int logical_Res_x, int logical_Res_y)
+bool GraphicsSYSTEM::Init_Renderer(int logical_Res_x, int logical_Res_y, bool use_vsync)
 {
     bool success = true;
+    Uint32 flags = SDL_RENDERER_ACCELERATED;
+    if(use_vsync){flags |= SDL_RENDERER_PRESENTVSYNC;}
     renderer = SDL_CreateRenderer
     (
-        window, -1, SDL_RENDERER_ACCELERATED
+        window, -1, flags
     );
     if (renderer == NULL)
     {
@@ -59,6 +65,7 @@ bool GraphicsSYSTEM::Init_Renderer(int logical_Res_x, int logical_Res_y)
         resolution = { logical_Res_x, logical_Res_y };
         SDL_RenderSetLogicalSize(renderer, logical_Res_x, logical_Res_y);	
         SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+        Logger::log(LogLevel::INFO, "Renderer successfully initialized with width:%d height:%d", logical_Res_x, logical_Res_y);
 
         int imgFlags = IMG_INIT_PNG;
         if (!(IMG_Init(imgFlags) & imgFlags))
@@ -80,6 +87,10 @@ bool GraphicsSYSTEM::Init_Renderer(int logical_Res_x, int logical_Res_y)
                 Logger::log(LogLevel::ERROR, "Failed to load default font! SDL_ttf Error: %s", TTF_GetError());
                 success = false;
             }
+            else
+            {
+                fonts.insert({"default", default_font});
+            }
             int index;
             for (unsigned char currentChar = 32; currentChar < 255; currentChar++)
             {
@@ -99,11 +110,16 @@ bool GraphicsSYSTEM::Init_Renderer(int logical_Res_x, int logical_Res_y)
 
 SDL_Renderer* GraphicsSYSTEM::Get_Renderer(){return renderer;}
 SDL_Window* GraphicsSYSTEM::Get_Window(){return window;}
-TTF_Font* GraphicsSYSTEM::Get_DefaultFont(){return default_font;}
+TTF_Font* GraphicsSYSTEM::Get_Font(const std::string& font){return fonts.at("default");}
 
 void GraphicsSYSTEM::Set_Renderer_Color(SDL_Color color){SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);}
 
-void GraphicsSYSTEM::Draw_Rect(SDL_Rect rect){SDL_RenderDrawRect(renderer, &rect);}
+void GraphicsSYSTEM::Draw_Rect(SDL_Rect rect, SDL_Color color)
+{
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+    SDL_RenderDrawRect(renderer, &rect);
+
+}
 void GraphicsSYSTEM::Draw_Line(SDL_Point pos1, SDL_Point pos2){SDL_RenderDrawLine(renderer, pos1.x, pos1.y, pos2.x, pos2.y);}
 void GraphicsSYSTEM::Draw_Circle(SDL_Point position, unsigned int radius, SDL_Color color)
 {
@@ -126,15 +142,15 @@ void GraphicsSYSTEM::Draw_Circle(SDL_Point position, unsigned int radius, SDL_Co
     }
 }
 
-bool GraphicsSYSTEM::Load_Texture_From_File(TextureComponent& textureComponent, std::string path)
-{   
+bool GraphicsSYSTEM::Load_Texture_From_File(TextureComponent& textureComponent){   
     bool success = true;
-    if(path == "")
+    std::string path = "";
+    if(textureComponent.path == "")
     {
-        path = textureComponent.path;
-        Logger::log(LogLevel::INFO, "Texture path not explicitly specified, using implicit path");
+        Logger::log(LogLevel::ERROR, "Texture path not specified");
+        success = false;
     }
-    else{textureComponent.path = path;}
+    else{path = textureComponent.path;}
     SDL_Surface* surface = IMG_Load(path.c_str());
     if(surface == NULL)
     {
@@ -158,9 +174,8 @@ bool GraphicsSYSTEM::Load_Texture_From_File(TextureComponent& textureComponent, 
     return success;
 }
 
-bool GraphicsSYSTEM::Load_Texture_From_String(TextureComponent& textureComponent, const std::string& texture_text, TTF_Font* font, SDL_Color text_color)
-{
-    SDL_Surface* textSurface = TTF_RenderText_Solid(font,texture_text.c_str(), text_color);
+bool GraphicsSYSTEM::Load_Texture_From_String(TextureComponent& textureComponent, const std::string& texture_text, const std::string& font, SDL_Color text_color){
+    SDL_Surface* textSurface = TTF_RenderText_Solid(fonts.at(font),texture_text.c_str(), text_color);
     if( textSurface == NULL )
     {
         Logger::log(LogLevel::ERROR,"Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
@@ -183,58 +198,10 @@ bool GraphicsSYSTEM::Load_Texture_From_String(TextureComponent& textureComponent
     return textureComponent.texture != NULL;
 }
 
-bool GraphicsSYSTEM::Init_Textures_From_JSON(const nlohmann::json& json)
-{
-    bool success = true;
-    for(auto& texture: json.items())
-    {
-        std::string path = texture.value().at("path");
-        std::string identifier = texture.key();
-
-        TextureComponent textureComp;
-        success = Load_Texture_From_File(textureComp, path);
-        if(success)
-        {
-            Entity textureID = engine.Get_EntitySYSTEM().Create_Entity();
-            engine.Get_ComponentSYSTEM().Add_Component<TextureComponent>(textureID, textureComp);
-            success = Add_Texture_Identification(identifier, textureID);
-        }
-    }
-    return success;
-}
-
-bool GraphicsSYSTEM::Add_Texture_Identification(const std::string& identifier, Entity textureID)
-{
-    bool success = true;
-    if(texture_identifcation.find(identifier) != texture_identifcation.end())
-    {
-        Logger::log(LogLevel::WARNING, "New idenfication of texture failed, texture has already been identified");
-        success = false;
-    }
-    else
-    {
-        texture_identifcation[identifier] = textureID;
-        Logger::log(LogLevel::INFO, "New idenfication of texture %s with ID %d registered", identifier.c_str(), textureID);
-    }
-    return success;
-}
-
-void GraphicsSYSTEM::Set_Texture_Identification(Entity& targetID, const std::string& identifer)
-{
-    if(texture_identifcation.find(identifer) == texture_identifcation.end())
-    {
-        Logger::log(LogLevel::WARNING, "Texture identifier %s doesn't exists, texture identification failed", identifer.c_str());
-        return;
-    }
-
-    targetID = texture_identifcation.at(identifer);
-    Logger::log(LogLevel::INFO, "Texture identifier %s registered to an entity", identifer.c_str());  
-}
-
 void GraphicsSYSTEM::Draw_Texture(TransformComponent transformComponent, TextureComponent& textureComponent, double scale, SDL_Rect* clip,
     SDL_Point* center, SDL_RendererFlip flip)
 {
-	SDL_Rect renderQuad = { transformComponent.x, transformComponent.y, 
+	SDL_Rect renderQuad = { static_cast<int>(std::round(transformComponent.x)), static_cast<int>(std::round(transformComponent.y)), 
         static_cast<int>(std::round(textureComponent.width*scale)), static_cast<int>(std::round(textureComponent.height*scale))};
 	if (clip != NULL)
 	{
@@ -245,18 +212,12 @@ void GraphicsSYSTEM::Draw_Texture(TransformComponent transformComponent, Texture
 		clip, &renderQuad, transformComponent.angle, center, flip);
 }
 
-void GraphicsSYSTEM::Draw_Text(Entity text_entity)
-{
-    auto& compSYSTEM = engine.Get_ComponentSYSTEM();
-    Draw_Texture(compSYSTEM.Get_Component<TransformComponent>(text_entity), compSYSTEM.Get_Component<TextComponent>(text_entity).texture);
-}
-
-void GraphicsSYSTEM::Draw_RenderComp(Entity entity)
-{
+void GraphicsSYSTEM::Draw_RenderComp(Entity entity){
     auto& compSYSTEM = engine.Get_ComponentSYSTEM();
     auto& transformComp = compSYSTEM.Get_Component<TransformComponent>(entity);
-    auto& renderComp = compSYSTEM.Get_Component<RenderComponent>(entity);
+    auto& renderComp = compSYSTEM.Get_Component<RenderInfoComponent>(entity);
     auto& textureComp = compSYSTEM.Get_Component<TextureComponent>(renderComp.ID);
+
     SDL_Rect* clip = NULL;
     if(renderComp.is_clip)
     {
@@ -265,28 +226,31 @@ void GraphicsSYSTEM::Draw_RenderComp(Entity entity)
     Draw_Texture(transformComp, textureComp, renderComp.scale, clip);
 }
 
-void GraphicsSYSTEM::Render_Clear()
-{
+void GraphicsSYSTEM::Render_Clear(){
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 	SDL_RenderClear(renderer);
 }
 
 void GraphicsSYSTEM::Render_Present(){SDL_RenderPresent(renderer);}
 
-void GraphicsSYSTEM::Render()
-{
+void GraphicsSYSTEM::Render(){
     auto& compSYSTEM = engine.Get_ComponentSYSTEM();
-    auto renderComp_array = compSYSTEM.Get_Component_Array<RenderComponent>().get();
+    auto renderComp_array = compSYSTEM.Get_Component_Array<RenderInfoComponent>().get();
     for(auto it = renderComp_array->begin(); it != renderComp_array->end(); ++it)
     {
-        Entity ID = it->first;
-        Draw_RenderComp(ID);
+        Entity entity_ID = it->first;
+        Draw_RenderComp(entity_ID);
+    }
+    auto rigidBodyComp_array = compSYSTEM.Get_Component_Array<RigidBodyComponent>().get();
+    for(auto it = rigidBodyComp_array->begin(); it != rigidBodyComp_array->end(); ++it)
+    {
+        Entity entity_ID = it->first;
+        size_t index = it->second;
+        SDL_Rect& rigidBodyRect = rigidBodyComp_array->Get_Array().at(index).rect;
+        Draw_Rect(rigidBodyRect);
     }
 }
 
-void GraphicsSYSTEM::Update_String_Texture(Entity ID, const std::string& text, TTF_Font* font, SDL_Color text_color)
-{
-    TextComponent& textComp = engine.Get_ComponentSYSTEM().Get_Component<TextComponent>(ID);
-    Load_Texture_From_String(textComp.texture, text, font, text_color);
-    textComp.text = text;
+void GraphicsSYSTEM::Update_Texture_From_Text(Entity ID, const std::string& text, const std::string& font, SDL_Color text_color){
+    Load_Texture_From_String(engine.Get_ComponentSYSTEM().Get_Component<TextureComponent>(ID), text, font, text_color);
 }
