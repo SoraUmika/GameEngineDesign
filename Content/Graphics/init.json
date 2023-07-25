@@ -1,0 +1,10 @@
+{
+    "pokemon_tileset":
+    {
+        "path": "Content/Graphics/pokemon_tileset.png"
+    },
+    "player_sprite_sheet":
+    {
+        "path": "Content/Graphics/player_spritesheet.png"
+    }
+}

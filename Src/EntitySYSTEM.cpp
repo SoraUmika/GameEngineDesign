@@ -21,7 +21,7 @@ Entity EntitySYSTEM::Create_Entity()
 void EntitySYSTEM::Destroy_Entity(Entity entity)
 {
     assert(entity < MAX_ENTITIES && "Entity out of range.");
+    engine.Get_ComponentSYSTEM().Remove_All_Entity_Components(entity);
     available_entities.push(entity);
     Logger::log(LogLevel::INFO, "Entity ID %d Freed", entity);
 }
-

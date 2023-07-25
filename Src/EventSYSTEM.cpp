@@ -84,19 +84,20 @@ void EventSYSTEM::Handle_Events()
 	{
 		Event event = event_queue.front();	
 		if(event.type == SDL_QUIT){
-			engine.Shut_Down();
 			std::queue<Event> empty_queue;
 			std::swap(event_queue, empty_queue);
+			engine.Shut_Down();
 			break;
 		}
-		auto& eventListener_array = *engine.Get_ComponentSYSTEM().Get_Component_Array<EventListenerComponent>().get();
-		for(auto it = eventListener_array.begin(); it != eventListener_array.end(); ++it)
+		
+		auto& eventListener_array = engine.Get_ComponentSYSTEM().Get_Component_Array<EventListenerComponent>();
+		auto& entities_list = eventListener_array.Get_Entities();
+		for(int i=0; i<entities_list.size();i++)
 		{
-			Entity entity_ID = it->first;
-			int index = it->second;
-			auto& listener = eventListener_array.Get_Array().at(index);
+			Entity entity = entities_list[i];
+			auto& listener = eventListener_array.Get_Data(entity);
 			listener.execute(event);
-		}
+		}		
 		event_queue.pop();
 	}
 }

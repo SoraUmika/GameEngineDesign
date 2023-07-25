@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <EntitySYSTEM.h>
+#include <Utility.h>
 
 class PhysicsSYSTEM: public SYSTEM
 {
@@ -11,7 +12,8 @@ class PhysicsSYSTEM: public SYSTEM
         PhysicsSYSTEM(Engine& engine);
         ~PhysicsSYSTEM();
         
-        bool Is_Collision(const SDL_Rect rect1, const SDL_Rect rect2);
+        Entity Cell_Collision_Check(SpatialPartition::Cell& cell, Entity self, const SDL_Rect& rect);
+        bool Is_Collision(const SDL_Rect& rect1, const SDL_Rect& rect2);
         
         void Update_Entities_Position();
         void Update();

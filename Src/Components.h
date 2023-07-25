@@ -33,7 +33,6 @@ struct TransformComponent{
 
 struct TextureComponent{
     TextureComponent(){}
-    TextureComponent(const std::string& path):path(path){}
     struct SDLTextureDeleter 
     {
         void operator()(SDL_Texture* texture) const {
@@ -41,11 +40,9 @@ struct TextureComponent{
             texture = nullptr;
         }
     };
-
     std::shared_ptr<SDL_Texture> texture = nullptr;
     int width = 0;
     int height = 0;
-    std::string path{};
 };
 
 struct SpriteSheetComponent{
@@ -68,12 +65,12 @@ struct RenderInfoComponent{
     RenderInfoComponent(){}
     RenderInfoComponent(double scale, bool is_clip, SDL_Rect clip): 
         scale(scale), is_clip(is_clip), clip(clip){}
-    Entity ID{};
+    size_t index{};
     SDL_Rect clip{};
     bool is_clip = false;
     double scale = 1.0;
-    int offset_x{};
-    int offset_y{};
+    double offset_x{};
+    double offset_y{};
 };
 
 struct EventListenerComponent{
@@ -92,23 +89,24 @@ struct TimedStateMachineComponent
     int current_state = 0;
     int num_state = 2;
     bool trigger = false;
-
 };
 
 struct TileLayer{
     TileLayer(){}
-    std::vector<int> data;
-    int tile_count_horizontal{};
-    int tile_count_vertical{};
-    std::string name{};};
+    std::vector<int> data{};
+    int tile_x_count{};
+    int tile_y_count{};
+    std::string name{};
+};
 
 struct TileMapComponent{
-    TileMapComponent(){}
+    TileMapComponent(int width, int height): width(width), height(height), grid(width, height){}
     std::string map_name;
-    Entity tileset_ID{};
+    Entity tileset_ID{}; 
+    SpatialPartition::Grid grid;
     std::vector<TileLayer> layers;
     int width{};
     int height{};
 };
 
-#endif
+#endif 

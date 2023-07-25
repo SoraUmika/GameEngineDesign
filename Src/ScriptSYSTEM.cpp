@@ -9,7 +9,6 @@ ScriptSYSTEM::ScriptSYSTEM(Engine& engine): SYSTEM(engine)
 void ScriptSYSTEM::Init_SYSTEMS()
 {
     lua.new_usertype<ComponentSYSTEM>("ComponentSYSTEM",
-        "Add_Component_By_Name", &ComponentSYSTEM::Add_Component_By_Name,
         "Add_Component", sol::overload(&ComponentSYSTEM::Add_Component<TransformComponent>,
                                        &ComponentSYSTEM::Add_Component<VelocityComponent>,
                                        &ComponentSYSTEM::Add_Component<RenderInfoComponent>,
@@ -25,7 +24,9 @@ void ScriptSYSTEM::Init_SYSTEMS()
     );
     lua.new_usertype<GraphicsSYSTEM>("GraphicsSYSTEM",
         "Load_Texture_From_File", &GraphicsSYSTEM::Load_Texture_From_File,
-        "Load_Texture_From_String", &GraphicsSYSTEM::Load_Texture_From_String
+        "Load_Texture_From_String", &GraphicsSYSTEM::Load_Texture_From_String,
+        "Register_Texture_From_File", &GraphicsSYSTEM::Register_Texture_From_File,
+        "Set_RenderInfo_Texture", &GraphicsSYSTEM::Set_RenderInfo_Texture
     );
 
     lua.new_usertype<EventSYSTEM>("EventSYSTEM", 
@@ -36,12 +37,17 @@ void ScriptSYSTEM::Init_SYSTEMS()
     lua.new_usertype<TimeSYSTEM>("TimeSYSTEM",
         "Update_Time_Tracker", &TimeSYSTEM::Update_Time_Tracker
     );
+
+    lua.new_usertype<WorldSYSTEM>("WorldSYSTEM",
+        "Register_Tilemap", WorldSYSTEM::Register_Tilemap
+    );
     lua.new_usertype<Engine>("Engine",
         "Get_ComponentSYSTEM", &Engine::Get_ComponentSYSTEM,
         "Get_EntitySYSTEM", &Engine::Get_EntitySYSTEM,
         "Get_GraphicsSYSTEM", &Engine::Get_GraphicsSYSTEM,
         "Get_EventSYSTEM", &Engine::Get_EventSYSTEM,
-        "Get_TimeSYSTEM", &Engine::Get_TimeSYSTEM
+        "Get_TimeSYSTEM", &Engine::Get_TimeSYSTEM,
+        "Get_WorldSYSTEM", &Engine::Get_WorldSYSTEM
     );
     lua["Engine"] = &engine;
 }

@@ -35,20 +35,22 @@ void Engine::Init_SYSTEMS(){
 	SYSTEM_graphics.Init_Renderer(resolution["width"], resolution["height"], resolution["vsync"]);
 
 	SYSTEM_component.Register_Component_Type<TransformComponent>(lua, "Transform", "new", 
-		sol::constructors<TransformComponent(), TransformComponent(int, int, double)>(),
+		sol::constructors<TransformComponent(), TransformComponent(double, double, double)>(),
 		"x", &TransformComponent::x,"y", &TransformComponent::y,"angle", &TransformComponent::angle);
 	SYSTEM_component.Register_Component_Type<VelocityComponent>(lua,"Velocity", "new", 
-		sol::constructors<VelocityComponent(), VelocityComponent(int, int, double)>(),
+		sol::constructors<VelocityComponent(), VelocityComponent(double, double, double)>(),
 		"x", &VelocityComponent::x,"y", &VelocityComponent::y, "angle", &VelocityComponent::angle, "active", &VelocityComponent::active);
+	/*
 	SYSTEM_component.Register_Component_Type<TextureComponent>(lua,"Texture", "new", 
 		sol::constructors<TextureComponent(), TextureComponent(const std::string&)>(), 
-		"path", &TextureComponent::path);
+		"path", &TextureComponent::path);	
+	*/
 	SYSTEM_component.Register_Component_Type<RigidBodyComponent>(lua,"RigidBody", "new",
 		sol::constructors<RigidBodyComponent(), RigidBodyComponent(SDL_Rect, bool, bool)>(),
 		"rect", &RigidBodyComponent::rect, "is_collision", &RigidBodyComponent::is_collision, "is_interactive", &RigidBodyComponent::is_interactive);
 	SYSTEM_component.Register_Component_Type<RenderInfoComponent>(lua,"RenderInfo", "new",
 		sol::constructors<RenderInfoComponent(), RenderInfoComponent(double, bool, SDL_Rect)>(),
-		"clip", &RenderInfoComponent::clip, "is_clip", &RenderInfoComponent::is_clip, "scale", &RenderInfoComponent::scale, "ID", &RenderInfoComponent::ID);
+		"clip", &RenderInfoComponent::clip, "is_clip", &RenderInfoComponent::is_clip, "scale", &RenderInfoComponent::scale);
 	SYSTEM_component.Register_Component_Type<EventListenerComponent>(lua,"EventListener", "new",
 		sol::constructors<EventListenerComponent(),EventListenerComponent(std::function<void(const Event&)>)>(),
 		"execute", &EventListenerComponent::execute);
@@ -57,18 +59,37 @@ void Engine::Init_SYSTEMS(){
 		"num_state", &TimedStateMachineComponent::num_state, "current_state", &TimedStateMachineComponent::current_state, "state_duration", 
 		&TimedStateMachineComponent::state_duration, "elapsed_time", &TimedStateMachineComponent::elapsed_time, "trigger", &TimedStateMachineComponent::trigger);
 
+	/*
 	SYSTEM_component.Register_Component_Type<SpriteSheetComponent>(lua, "SpriteSheet", "new",
 		sol::constructors<SpriteSheetComponent()>(),
-		"group", &SpriteSheetComponent::sprite_sheet);	
+		"group", &SpriteSheetComponent::sprite_sheet);
 	SYSTEM_component.Register_Component_Type<TileMapComponent>(lua,"Tilemap");
+	*/
 
-    //SYSTEM_script.Run_Script_From_File("Content/Scripts/helper.lua");
 	SYSTEM_script.Run_Script_From_File("Content/Scripts/initialize.lua");
+
 }
 
 void Engine::Init_Variables(){
 	run = true;
 	intenal_variables.ID = SYSTEM_entity.Create_Entity();
+	/*
+	SpatialPartition::Cell cell;
+	std::array<Entity, 4> entities;
+	for(int i=0; i< entities.size(); i++){
+		entities[i] = SYSTEM_entity.Create_Entity();
+		cell.Insert(entities[i]);
+	}
+	RigidBodyComponent& RB0 = SYSTEM_component.Add_Component<RigidBodyComponent>(entities[0], RigidBodyComponent({50,50, 100,100}, true, false));
+	RigidBodyComponent& RB1 = SYSTEM_component.Add_Component<RigidBodyComponent>(entities[1], RigidBodyComponent({1,1, 100,100}, true, false));
+	RigidBodyComponent& RB2 = SYSTEM_component.Add_Component<RigidBodyComponent>(entities[2], RigidBodyComponent({315,885, 500,100}, true, false));
+	RigidBodyComponent& RB3 = SYSTEM_component.Add_Component<RigidBodyComponent>(entities[3], RigidBodyComponent({300,900, 100,100}, true, false));
+	
+	Entity myEntity = entities[3];
+	Entity ID = SYSTEM_physics.Cell_Collision_Check(cell, myEntity, RB3.rect);
+	Logger::log(LogLevel::INFO, "my entity %d collided with entity object %d", myEntity, ID);	
+	*/
+
 }
 
 void Engine::Init_Everything(){
