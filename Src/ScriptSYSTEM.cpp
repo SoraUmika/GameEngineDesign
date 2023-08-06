@@ -13,8 +13,6 @@ void ScriptSYSTEM::Init_SYSTEMS()
                                        &ComponentSYSTEM::Add_Component<VelocityComponent>,
                                        &ComponentSYSTEM::Add_Component<RenderInfoComponent>,
                                        &ComponentSYSTEM::Add_Component<RigidBodyComponent>,
-                                       &ComponentSYSTEM::Add_Component<TextureComponent>,
-                                       &ComponentSYSTEM::Add_Component<SpriteSheetComponent>,
                                        &ComponentSYSTEM::Add_Component<EventListenerComponent>,
                                        &ComponentSYSTEM::Add_Component<TimedStateMachineComponent>
                                        )
@@ -23,8 +21,10 @@ void ScriptSYSTEM::Init_SYSTEMS()
         "Create_Entity", &EntitySYSTEM::Create_Entity
     );
     lua.new_usertype<GraphicsSYSTEM>("GraphicsSYSTEM",
-        "Load_Texture_From_File", &GraphicsSYSTEM::Load_Texture_From_File,
-        "Load_Texture_From_String", &GraphicsSYSTEM::Load_Texture_From_String,
+        "Create_Texture", sol::overload(
+            sol::resolve<bool(TextureComponent&, Uint32, int, int, int)>(&GraphicsSYSTEM::Create_Texture),
+            sol::resolve<bool(TextureComponent&, const std::string&)>(&GraphicsSYSTEM::Create_Texture)),
+        "Create_Texture_From_String", &GraphicsSYSTEM::Create_Texture_From_String,
         "Register_Texture_From_File", &GraphicsSYSTEM::Register_Texture_From_File,
         "Set_RenderInfo_Texture", &GraphicsSYSTEM::Set_RenderInfo_Texture
     );
@@ -39,7 +39,11 @@ void ScriptSYSTEM::Init_SYSTEMS()
     );
 
     lua.new_usertype<WorldSYSTEM>("WorldSYSTEM",
-        "Register_Tilemap", WorldSYSTEM::Register_Tilemap
+        "Register_Scene", &WorldSYSTEM::Register_Scene,
+        "Add_Entity_To_Scene", &WorldSYSTEM::Add_Entity_To_Scene,
+        "Set_Current_Scene", sol::overload(sol::resolve<void(size_t)>(&WorldSYSTEM::Set_Current_Scene),
+                                            sol::resolve<void(const std::string&)>(&WorldSYSTEM::Set_Current_Scene)),
+        "Create_New_Scene", &WorldSYSTEM::Create_New_Scene
     );
     lua.new_usertype<Engine>("Engine",
         "Get_ComponentSYSTEM", &Engine::Get_ComponentSYSTEM,

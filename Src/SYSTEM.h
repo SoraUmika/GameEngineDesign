@@ -9,7 +9,7 @@
 using Entity = uint64_t;
 using EventCode = uint32_t;
 constexpr Entity MAX_ENTITIES = 65536;
-constexpr size_t MAX_Textures = 256;
+constexpr size_t MAX_TEXTURES = 256;
 using EntityType = std::string;
 
 class Engine;

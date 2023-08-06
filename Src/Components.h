@@ -40,14 +40,9 @@ struct TextureComponent{
             texture = nullptr;
         }
     };
-    std::shared_ptr<SDL_Texture> texture = nullptr;
+    std::unique_ptr<SDL_Texture, SDLTextureDeleter> texture = nullptr;
     int width = 0;
     int height = 0;
-};
-
-struct SpriteSheetComponent{
-    SpriteSheetComponent(){}
-    std::unordered_map<std::string, std::vector<SDL_Rect>> sprite_sheet;
 };
 
 struct RigidBodyComponent{
@@ -91,6 +86,17 @@ struct TimedStateMachineComponent
     bool trigger = false;
 };
 
+struct TileSet{
+    int width{};
+    int height{};
+    std::string identifier{};
+    int tilewidth{};
+    int tileheight{};
+    int tilecount{};
+    int columns{};
+    std::unordered_map<std::string, SDL_Rect> objects_clip;
+};
+
 struct TileLayer{
     TileLayer(){}
     std::vector<int> data{};
@@ -99,12 +105,28 @@ struct TileLayer{
     std::string name{};
 };
 
+struct Scene{
+    Scene(const std::string& name, size_t ID, int width, int height): width(width), height(height), grid(width, height)
+    {
+        scene_name = name;
+        scene_ID = ID;
+    }
+    std::string scene_name{};
+    size_t scene_ID{};
+    std::vector<Entity> entities;
+    SpatialPartition::Grid grid;
+    int width{};
+    int height{};
+};
+
+
 struct TileMapComponent{
     TileMapComponent(int width, int height): width(width), height(height), grid(width, height){}
     std::string map_name;
-    Entity tileset_ID{}; 
+    size_t tileset_ID{}; 
     SpatialPartition::Grid grid;
     std::vector<TileLayer> layers;
+    std::vector<Entity> entities;
     int width{};
     int height{};
 };

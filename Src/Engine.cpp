@@ -40,11 +40,6 @@ void Engine::Init_SYSTEMS(){
 	SYSTEM_component.Register_Component_Type<VelocityComponent>(lua,"Velocity", "new", 
 		sol::constructors<VelocityComponent(), VelocityComponent(double, double, double)>(),
 		"x", &VelocityComponent::x,"y", &VelocityComponent::y, "angle", &VelocityComponent::angle, "active", &VelocityComponent::active);
-	/*
-	SYSTEM_component.Register_Component_Type<TextureComponent>(lua,"Texture", "new", 
-		sol::constructors<TextureComponent(), TextureComponent(const std::string&)>(), 
-		"path", &TextureComponent::path);	
-	*/
 	SYSTEM_component.Register_Component_Type<RigidBodyComponent>(lua,"RigidBody", "new",
 		sol::constructors<RigidBodyComponent(), RigidBodyComponent(SDL_Rect, bool, bool)>(),
 		"rect", &RigidBodyComponent::rect, "is_collision", &RigidBodyComponent::is_collision, "is_interactive", &RigidBodyComponent::is_interactive);
@@ -59,12 +54,6 @@ void Engine::Init_SYSTEMS(){
 		"num_state", &TimedStateMachineComponent::num_state, "current_state", &TimedStateMachineComponent::current_state, "state_duration", 
 		&TimedStateMachineComponent::state_duration, "elapsed_time", &TimedStateMachineComponent::elapsed_time, "trigger", &TimedStateMachineComponent::trigger);
 
-	/*
-	SYSTEM_component.Register_Component_Type<SpriteSheetComponent>(lua, "SpriteSheet", "new",
-		sol::constructors<SpriteSheetComponent()>(),
-		"group", &SpriteSheetComponent::sprite_sheet);
-	SYSTEM_component.Register_Component_Type<TileMapComponent>(lua,"Tilemap");
-	*/
 
 	SYSTEM_script.Run_Script_From_File("Content/Scripts/initialize.lua");
 
@@ -99,12 +88,14 @@ void Engine::Init_Everything(){
 
 void Engine::Update(){
 	SYSTEM_event.Update();
-	SYSTEM_physics.Update();
+	//SYSTEM_physics.Update();
+	SYSTEM_world.Update();
 }
 
 void Engine::Render(){
 	SYSTEM_graphics.Render_Clear();
-	SYSTEM_graphics.Render();
+	//SYSTEM_graphics.Render();
+	SYSTEM_world.Render();
 	SYSTEM_graphics.Render_Present();
 	intenal_variables.frames_count += 1;
 }

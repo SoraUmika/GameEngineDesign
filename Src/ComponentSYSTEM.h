@@ -145,7 +145,6 @@ public:
 
 private:
     std::unordered_map<std::type_index, std::unique_ptr<IComponentArray>> component_arrays{};
-    ComponentType next_component_type{};
 };
 
 #endif // !COMPONENT_H

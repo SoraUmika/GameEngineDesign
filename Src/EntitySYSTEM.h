@@ -4,7 +4,7 @@
 #include <queue>
 #include <vector>
 #include <cassert>
-#include <JSON/json.hpp>
+#include <unordered_map>
 
 class EntitySYSTEM: public SYSTEM
 {

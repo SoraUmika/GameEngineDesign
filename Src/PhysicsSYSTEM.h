@@ -5,7 +5,9 @@
 #include <unordered_map>
 #include <EntitySYSTEM.h>
 #include <Utility.h>
+#include <Components.h>
 
+class WorldSYSTEM;
 class PhysicsSYSTEM: public SYSTEM
 {
     public:
@@ -15,6 +17,7 @@ class PhysicsSYSTEM: public SYSTEM
         Entity Cell_Collision_Check(SpatialPartition::Cell& cell, Entity self, const SDL_Rect& rect);
         bool Is_Collision(const SDL_Rect& rect1, const SDL_Rect& rect2);
         
+        void Update_Scene_Physics(Scene& scene);
         void Update_Entities_Position();
         void Update();
     private:

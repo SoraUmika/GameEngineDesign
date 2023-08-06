@@ -9,8 +9,7 @@ EventSYSTEM::~EventSYSTEM()
 }
 
 
-EventType EventSYSTEM::Register_Event_Type(const std::string& type_name)
-{
+EventType EventSYSTEM::Register_Event_Type(const std::string& type_name){
 
 	if(type_map.find(type_name) == type_map.end())
 	{
@@ -25,8 +24,7 @@ EventType EventSYSTEM::Register_Event_Type(const std::string& type_name)
 	}
 }
 
-EventCode EventSYSTEM::Get_Event_Type(const std::string& type_name)
-{
+EventCode EventSYSTEM::Get_Event_Type(const std::string& type_name){
 	if(type_map.find(type_name) != type_map.end())
 	{
 		return type_map.at(type_name);
@@ -36,13 +34,11 @@ EventCode EventSYSTEM::Get_Event_Type(const std::string& type_name)
 	}
 }
 
-void EventSYSTEM::Push_Event(const Event& event)
-{
+void EventSYSTEM::Push_Event(const Event& event){
 	event_queue.push(event);
 }
 
-void EventSYSTEM::Poll_SDL_Events()
-{
+void EventSYSTEM::Poll_SDL_Events(){
 	const Uint8* key_state = SDL_GetKeyboardState(NULL);
 	for(int i=0; i<SDL_Scancode::SDL_NUM_SCANCODES; i++)
 	{
@@ -73,8 +69,7 @@ void EventSYSTEM::Poll_SDL_Events()
 	}
 }
 
-void EventSYSTEM::Poll_Events()
-{
+void EventSYSTEM::Poll_Events(){
 
 }
 

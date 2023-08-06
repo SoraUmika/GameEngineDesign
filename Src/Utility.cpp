@@ -1,5 +1,6 @@
 #include <Utility.h>
 
+/*
 nlohmann::json Read_Json_From_Files(std::string path)
 {
     SDL_RWops* file = SDL_RWFromFile(path.c_str(), "r");
@@ -28,6 +29,13 @@ nlohmann::json Read_Json_From_Files(std::string path)
     delete[] buffer;
     SDL_RWclose(file);
     return jsonData;
+}
+*/
+
+namespace DataStructure
+{
+
+
 }
 
 namespace SpatialPartition
@@ -86,8 +94,8 @@ namespace SpatialPartition
     Grid::Grid(){};
     Grid::Grid(int width, int height)
     : width(width), height(height){
-        cell_count_x = width/cell_length+1;
-        cell_count_y = height/cell_length+1;
+        cell_count_x = width/CELL_SIZE+1;
+        cell_count_y = height/CELL_SIZE+1;
         cells.resize(cell_count_x*cell_count_y);
     }
     void Grid::Init(int width, int height){
@@ -134,10 +142,16 @@ namespace SpatialPartition
     void Grid::Move(Entity ID, const SDL_Rect& entity_rect, const SDL_Rect& target_rect){
         Remove(ID, entity_rect);
         Insert(ID, target_rect);
+        
     }
     Cell& Grid::Get_Cell(int index_x, int index_y){
         return cells.at(index_x*cell_count_y+index_y);
     }
+
+    std::vector<Cell>& Grid::Get_Cells(){
+        return cells;
+    }
+
     void Grid::Print_Grid_Info(){
         for(int y=0; y < cell_count_y; y++){
             for(int x=0; x < cell_count_x; x++){
@@ -148,6 +162,12 @@ namespace SpatialPartition
             std::cout << std::endl;
         }
     }
-
+    SDL_Rect Grid::Get_Cell_Rect(int index_x, int index_y){
+        return {index_x*CELL_SIZE, index_y*CELL_SIZE, CELL_SIZE, CELL_SIZE};
+    }
+    
+    SDL_Point Grid::Get_Cell_Counts(){
+        return {cell_count_x, cell_count_y};
+    }
 }
 
