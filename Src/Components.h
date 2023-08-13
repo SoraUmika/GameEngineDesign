@@ -9,26 +9,27 @@
 #include <algorithm>
 #include <Utility.h>
 #include <Events.h>
+#include <BasicComponents.h>
 
 struct VelocityComponent{
     VelocityComponent(){}
-    VelocityComponent(double x, double y, double angle): x(x), y(y), angle(angle){}
-    double x = 0;
-    double y = 0;
-    double angle = 0.0;
+    VelocityComponent(float x, float y, float angle): x(x), y(y), angle(angle){}
+    float x = 0;
+    float y = 0;
+    float angle = 0.0;
     bool active = false;
 };
 
 struct TransformComponent{
     TransformComponent(){}
-    TransformComponent(double x, double y, double angle): x(x), y(y), angle(angle){}
+    TransformComponent(float x, float y, float angle): x(x), y(y), angle(angle){}
     TransformComponent operator+(const VelocityComponent& vel) const 
     {
         return TransformComponent(x+vel.x, y+vel.y, angle+vel.angle);
     }
-    double x = 0;
-    double y = 0;
-    double angle = 0.0;
+    float x = 0;
+    float y = 0;
+    float angle = 0.0;
 };
 
 struct TextureComponent{
@@ -37,9 +38,9 @@ struct TextureComponent{
     {
         void operator()(SDL_Texture* texture) const {
             SDL_DestroyTexture(texture);
-            texture = nullptr;
         }
     };
+
     std::unique_ptr<SDL_Texture, SDLTextureDeleter> texture = nullptr;
     int width = 0;
     int height = 0;
@@ -47,13 +48,14 @@ struct TextureComponent{
 
 struct RigidBodyComponent{
     RigidBodyComponent(){}
-    RigidBodyComponent(SDL_Rect rect, bool is_collision, bool is_interactive): 
+    RigidBodyComponent(RectComponent<float> rect, bool is_collision, bool is_interactive): 
         rect(rect), is_collision(is_collision), is_interactive(is_interactive){}
+    
     bool is_collision{};
     bool is_interactive{};
-    SDL_Rect rect{};
-    int relative_x{};
-    int relative_y{};
+    RectComponent<float> rect{};
+    float relative_x{};
+    float relative_y{};
 };
 
 struct RenderInfoComponent{
@@ -63,9 +65,9 @@ struct RenderInfoComponent{
     size_t index{};
     SDL_Rect clip{};
     bool is_clip = false;
-    double scale = 1.0;
-    double offset_x{};
-    double offset_y{};
+    float scale = 1.0;
+    float offset_x{};
+    float offset_y{};
 };
 
 struct EventListenerComponent{
@@ -84,6 +86,12 @@ struct TimedStateMachineComponent
     int current_state = 0;
     int num_state = 2;
     bool trigger = false;
+};
+
+struct AnimationComponent{
+    AnimationComponent(){}
+    int active_animation{};
+    std::unordered_map<size_t, SDL_Rect> clips;
 };
 
 struct TileSet{
@@ -105,6 +113,17 @@ struct TileLayer{
     std::string name{};
 };
 
+struct TileMapComponent{
+    TileMapComponent(int width, int height): width(width), height(height), grid(width, height){}
+    std::string map_name;
+    size_t tileset_ID{}; 
+    SpatialPartition::Grid grid;
+    std::vector<TileLayer> layers;
+    std::vector<Entity> entities;
+    int width{};
+    int height{};
+};
+
 struct Scene{
     Scene(const std::string& name, size_t ID, int width, int height): width(width), height(height), grid(width, height)
     {
@@ -119,16 +138,15 @@ struct Scene{
     int height{};
 };
 
-
-struct TileMapComponent{
-    TileMapComponent(int width, int height): width(width), height(height), grid(width, height){}
-    std::string map_name;
-    size_t tileset_ID{}; 
-    SpatialPartition::Grid grid;
-    std::vector<TileLayer> layers;
-    std::vector<Entity> entities;
-    int width{};
-    int height{};
+struct FontComponent{
+    struct SDLFontDeleter 
+    {
+        void operator()(TTF_Font* font) const {
+            TTF_CloseFont(font);
+        }
+    };
+    std::unique_ptr<TTF_Font, SDLFontDeleter> font = nullptr;
+    TextureComponent glyphs;
+    std::array<SDL_Rect, 128> glyph_clips;
 };
-
 #endif 

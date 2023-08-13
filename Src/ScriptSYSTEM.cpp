@@ -24,7 +24,6 @@ void ScriptSYSTEM::Init_SYSTEMS()
         "Create_Texture", sol::overload(
             sol::resolve<bool(TextureComponent&, Uint32, int, int, int)>(&GraphicsSYSTEM::Create_Texture),
             sol::resolve<bool(TextureComponent&, const std::string&)>(&GraphicsSYSTEM::Create_Texture)),
-        "Create_Texture_From_String", &GraphicsSYSTEM::Create_Texture_From_String,
         "Register_Texture_From_File", &GraphicsSYSTEM::Register_Texture_From_File,
         "Set_RenderInfo_Texture", &GraphicsSYSTEM::Set_RenderInfo_Texture
     );

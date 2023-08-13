@@ -14,13 +14,18 @@ class PhysicsSYSTEM: public SYSTEM
         PhysicsSYSTEM(Engine& engine);
         ~PhysicsSYSTEM();
         
-        Entity Cell_Collision_Check(SpatialPartition::Cell& cell, Entity self, const SDL_Rect& rect);
-        bool Is_Collision(const SDL_Rect& rect1, const SDL_Rect& rect2);
+        Entity Cell_Collision_Check(SpatialPartition::Cell& cell, Entity self, const RectComponent<float>& rect);
+        Entity Grid_Collision_Check(SpatialPartition::Grid& grid, Entity self, const RectComponent<float>& rect);
+        bool Is_Collision(const RectComponent<float>& rect1, const RectComponent<float>& rect2);
         
+        Vect2D<float> Get_Distance(const RectComponent<float>& rect1, const RectComponent<float>& rect2);
+        Vect2D<float> Get_Distance(const Vect2D<float>& vect1, const Vect2D<float>& vect2);
         void Update_Scene_Physics(Scene& scene);
         void Update_Entities_Position();
         void Update();
     private:
+        Vect2D<float> Get_Distance_Correction(const Vect2D<float>& distance, const RectComponent<float>& rect1, const RectComponent<float>& rect2);
+        Vect2D<float> Rect_Center_Pos(const RectComponent<float>& rect);
 };
 
 #endif // !PHYSICSSYSTEM_H

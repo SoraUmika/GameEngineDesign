@@ -1,5 +1,4 @@
 #include <Utility.h>
-
 /*
 nlohmann::json Read_Json_From_Files(std::string path)
 {
@@ -101,12 +100,12 @@ namespace SpatialPartition
     void Grid::Init(int width, int height){
         Grid(width, height);
     }
-    void Grid::Insert(Entity ID, const SDL_Rect& entity_rect){
+    void Grid::Insert(Entity ID, const RectComponent<float>& entity_rect){
         if(entity_rect.x < 0 || entity_rect.y < 0){
             Logger::log(LogLevel::ERROR,"Entity %d could not be inserted. Coordinates contains negative values.", ID);
             return;
         }
-        CellsRect cellsRect = Calculate_Cells_Rect(entity_rect);
+        OverlappedBoundary cellsRect = Get_OverlappedBoundary(entity_rect);
         if(cellsRect.end_cell_x >= cell_count_x || cellsRect.end_cell_y >= cell_count_y){
             Logger::log(LogLevel::ERROR,"Entity %d could not be inserted. Coordinates exceed grid dimensions.", ID);
             return;
@@ -114,18 +113,18 @@ namespace SpatialPartition
         for(int x = cellsRect.start_cell_x; x <= cellsRect.end_cell_x; x++){
             for(int y = cellsRect.start_cell_y; y <= cellsRect.end_cell_y; y++){
                 int index = x * cell_count_y + y;
-                if(cells.at(index).Insert(ID)){
-                    Logger::log(LogLevel::INFO,"Entity %d inserted to cell [%d,%d].", ID, x,y);
+                if(!cells.at(index).Insert(ID)){
+                    Logger::log(LogLevel::WARNING,"Entity %d cannot be inserted to cell [%d,%d].", ID, x,y);
                 }
             }
         }
     }
-    void Grid::Remove(Entity ID, const SDL_Rect& entity_rect){
+    void Grid::Remove(Entity ID, const RectComponent<float>& entity_rect){
         if(entity_rect.x < 0 || entity_rect.y < 0){
             Logger::log(LogLevel::ERROR,"Entity %d could not be removed. Negative coordinates.", ID);
             return;
         }
-        CellsRect cellsRect = Calculate_Cells_Rect(entity_rect);
+        OverlappedBoundary cellsRect = Get_OverlappedBoundary(entity_rect);
         if(cellsRect.end_cell_x >= cell_count_x || cellsRect.end_cell_y >= cell_count_y){
             Logger::log(LogLevel::ERROR,"Entity %d could not be removed. Coordinates exceed grid dimensions.", ID);
             return;
@@ -133,13 +132,13 @@ namespace SpatialPartition
         for(int x = cellsRect.start_cell_x; x <= cellsRect.end_cell_x; x++){
             for(int y = cellsRect.start_cell_y; y <= cellsRect.end_cell_y; y++){
                 int index = x * cell_count_y + y;
-                if(cells.at(index).Remove(ID)){
-                    Logger::log(LogLevel::INFO,"Entity %d removed from cell [%d,%d].", ID, x,y);
+                if(!cells.at(index).Remove(ID)){
+                    Logger::log(LogLevel::WARNING,"Entity cannot %d removed from cell [%d,%d].", ID, x,y);
                 }
             }
         }     
     }
-    void Grid::Move(Entity ID, const SDL_Rect& entity_rect, const SDL_Rect& target_rect){
+    void Grid::Move(Entity ID, const RectComponent<float>& entity_rect, const RectComponent<float>& target_rect){
         Remove(ID, entity_rect);
         Insert(ID, target_rect);
         
@@ -152,13 +151,22 @@ namespace SpatialPartition
         return cells;
     }
 
+    Grid::OverlappedBoundary Grid::Get_OverlappedBoundary(const RectComponent<float>& rect){
+        OverlappedBoundary cellsRect{};
+        cellsRect.start_cell_x = static_cast<int>(rect.x / CELL_SIZE);
+        cellsRect.start_cell_y = static_cast<int>(rect.y / CELL_SIZE);
+        cellsRect.end_cell_x = static_cast<int>((rect.x + rect.w) / CELL_SIZE);
+        cellsRect.end_cell_y = static_cast<int>((rect.y + rect.h) / CELL_SIZE);
+        return cellsRect;
+    }
+
     void Grid::Print_Grid_Info(){
         for(int y=0; y < cell_count_y; y++){
             for(int x=0; x < cell_count_x; x++){
                 int index = x*cell_count_y + y;
                 int cell_size = cells.at(index).size();
                 std::cout << cell_size << "\t";
-            }                
+            }
             std::cout << std::endl;
         }
     }

@@ -5,6 +5,7 @@
 #include <vector>
 #include <sol/sol.hpp>
 #include <SYSTEM.h>
+#include <BasicComponents.h>
 
 /*
 nlohmann::json Read_Json_From_Files(std::string path);
@@ -33,32 +34,36 @@ namespace DataStructure
     template <typename K, typename T, std::size_t N>
     class MappedArray{
         public:
-            void add(const K& key, const T& value) {
-                if (size_count >= N) {
-                    throw std::overflow_error("MappedArray is full");
+            MappedArray(){
+                data.reserve(N);
+                data.emplace_back(T());
+            }
+            size_t add(const K& key, T& value) {
+                if(exists(key)){
+                    Logger::log(LogLevel::ERROR, "Failed to add mapped array element: Element already exists!");
+                    return 0;
                 }
-                index_lookup_map[key] = size_count;
-                data[size_count] = value;
-                size_count++;
+                index_lookup_map[key] = data.size();
+                data.push_back(std::move(value));
+                return index_lookup_map[key];
             }
             void remove(const K& key) {
                 if (!exists(key)) {
-                    throw std::out_of_range("Key does not exist");
+                    Logger::log(LogLevel::ERROR, "Failed to remove mapped array element: element does not exists!");
+                    return;
                 }
                 size_t index_to_remove = index_lookup_map[key];
-
-                if (index_to_remove != size_count - 1) {
-                    std::swap(data[index_to_remove], data[size_count - 1]);
+                if (index_to_remove != data.size() - 1) {
+                    std::swap(data[index_to_remove], data.back());
                     for (auto& pair : index_lookup_map) {
-                        if (pair.second == size_count - 1) {
+                        if (pair.second == data.size() - 1) {
                             pair.second = index_to_remove;
                             break;
                         }
                     }
                 }
-
+                data.pop_back();
                 index_lookup_map.erase(key);
-                size_count--;
             }
             bool exists(const K& key) const {
                 return index_lookup_map.find(key) != index_lookup_map.end();
@@ -66,20 +71,31 @@ namespace DataStructure
             T& operator[](const K& key) {
                 return data.at(index_lookup_map.at(key));
             }
+            T& operator[](size_t index) {
+                return data.at(index);
+            }
+            size_t get_index(const K& key){
+                if(exists(key)){
+                    return index_lookup_map.at(key);
+                }else{
+                    Logger::log(LogLevel::ERROR, "Getting index of a mapped array failed, key doesnt exist" );
+                    return 0;
+                }
+            }
             const T& operator[](const K& key) const {
                 return data.at(index_lookup_map.at(key));
             }
             std::size_t size() const {
-                return size_count;
+                return data.size();
             }
             std::size_t capacity() const {
-                return N;
+                return data.capacity();
             }
         private:
-            std::array<T, N> data;
+            std::vector<T> data;
             std::unordered_map<K, size_t> index_lookup_map;
-            size_t size_count = 1;
     };
+
 }
 
 namespace SpatialPartition
@@ -106,36 +122,32 @@ namespace SpatialPartition
             std::unordered_map<Entity, size_t> index_map;
     };
 
+    
     class Grid
     {
         public:
-            Grid();
-            Grid(int width, int height);
-            void Init(int width, int height);
-            void Insert(Entity ID, const SDL_Rect& entity_rect);
-            void Remove(Entity ID, const SDL_Rect& entity_rect);
-            void Move(Entity ID, const SDL_Rect& entity_rect, const SDL_Rect& target_rect);
-
-            std::vector<Cell>& Get_Cells();
-            Cell& Get_Cell(int index_x, int index_y);
-            SDL_Rect Get_Cell_Rect(int index_x, int index_y);
-            SDL_Point Get_Cell_Counts();
-            void Print_Grid_Info();
-        private:
-            struct CellsRect{
+            struct OverlappedBoundary{
                 int start_cell_x{};
                 int start_cell_y{};
                 int end_cell_x{};
                 int end_cell_y{};
             };
-            CellsRect Calculate_Cells_Rect(const SDL_Rect& rect){
-                CellsRect cellsRect{};
-                cellsRect.start_cell_x = static_cast<int>(rect.x / CELL_SIZE);
-                cellsRect.start_cell_y = static_cast<int>(rect.y / CELL_SIZE);
-                cellsRect.end_cell_x = static_cast<int>((rect.x + rect.w) / CELL_SIZE);
-                cellsRect.end_cell_y = static_cast<int>((rect.y + rect.h) / CELL_SIZE);
-                return cellsRect;
-            }
+            Grid();
+            Grid(int width, int height);
+            void Init(int width, int height);
+            void Insert(Entity ID, const RectComponent<float>& entity_rect);
+            void Remove(Entity ID, const RectComponent<float>& entity_rect);
+            void Move(Entity ID, const RectComponent<float>& entity_rect, const RectComponent<float>& target_rect);
+
+            std::vector<Cell>& Get_Cells();
+            Cell& Get_Cell(int index_x, int index_y);
+            SDL_Rect Get_Cell_Rect(int index_x, int index_y);
+            SDL_Point Get_Cell_Counts();
+
+            OverlappedBoundary Get_OverlappedBoundary(const RectComponent<float>& rect);
+            void Print_Grid_Info();
+        private:
+
             int width{};
             int height{};
             int cell_count_x{};

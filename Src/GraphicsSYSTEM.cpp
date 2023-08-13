@@ -4,19 +4,18 @@ GraphicsSYSTEM::GraphicsSYSTEM(Engine& engine): SYSTEM(engine)
 {
     renderer = NULL;
     window = NULL;
-    default_font = NULL;
 }
 
 GraphicsSYSTEM::~GraphicsSYSTEM()
 {
+    fonts.clear();
+    
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
-    TTF_CloseFont(default_font);
     renderer = NULL;
     window = NULL;
-    default_font = NULL;
     TTF_Quit();
-    IMG_Quit();  
+    IMG_Quit();
 }
 
 bool GraphicsSYSTEM::Init_Window(const std::string& program_title, int window_Size_x, int window_Size_y)
@@ -58,7 +57,6 @@ bool GraphicsSYSTEM::Init_Renderer(int logical_Res_x, int logical_Res_y, bool us
         SDL_RenderSetLogicalSize(renderer, logical_Res_x, logical_Res_y);	
         SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
         Logger::log(LogLevel::INFO, "Renderer successfully initialized with width:%d height:%d", logical_Res_x, logical_Res_y);
-
         int imgFlags = IMG_INIT_PNG;
         if (!(IMG_Init(imgFlags) & imgFlags)){
             Logger::log(LogLevel::ERROR, "SDL_image could not initialize! SDL_image Error: %s", IMG_GetError());
@@ -69,35 +67,77 @@ bool GraphicsSYSTEM::Init_Renderer(int logical_Res_x, int logical_Res_y, bool us
             Logger::log(LogLevel::ERROR, "SDL_ttf could not initialize! SDL_ttf Error: %s\n", TTF_GetError());
             success = false;
         }
-        else{
-            int size = 20;
-            default_font = TTF_OpenFont("Content/Fonts/default_font.ttf", size);
-            if (default_font == NULL){
-                Logger::log(LogLevel::ERROR, "Failed to load default font! SDL_ttf Error: %s", TTF_GetError());
-                success = false;
-            }
-            else{
-                fonts.insert({"default", default_font});
-                Construct_Text_Sprites("default_font", default_font, size);
-            }
-            int index;
-            for (unsigned char currentChar = 32; currentChar < 255; currentChar++){
-                if (currentChar == 127){
-                    currentChar = 159;
-                    continue;
-                }
-                index = TTF_GlyphIsProvided(default_font, currentChar);
-                if (!index)
-                    Logger::log(LogLevel::ERROR, "There is no '%c' in the loaded font! ASCII: %i", currentChar, currentChar);
-            }
-        }
+        FontComponent font;
+        Create_Font(font, "Content/Fonts/default_font.ttf", 20);
+        Register_Font("default", font);
     }
     return success;
 }
 
 SDL_Renderer* GraphicsSYSTEM::Get_Renderer(){return renderer;}
 SDL_Window* GraphicsSYSTEM::Get_Window(){return window;}
-TTF_Font* GraphicsSYSTEM::Get_Font(const std::string& font){return fonts.at("default");}
+FontComponent& GraphicsSYSTEM::Get_Font(const std::string& font){return fonts.at(font);}
+
+bool GraphicsSYSTEM::Create_Font(FontComponent& font, const std::string& path, const int size){
+    bool success = true;
+    TTF_Font* raw_font = TTF_OpenFont(path.c_str(), size);
+    font.font = std::unique_ptr<TTF_Font, FontComponent::SDLFontDeleter>(raw_font);
+    if (raw_font == NULL){
+        Logger::log(LogLevel::ERROR, "Failed to load font! SDL_ttf Error: %s", TTF_GetError());
+        success = false;
+    }
+    else{
+        if(Construct_Text_Glyphs(font, size)){
+            Logger::log(LogLevel::INFO,"Font %s succesfully loaded", path.c_str());
+            int index;
+            for (unsigned char currentChar = 32; currentChar < 255; currentChar++){
+                if (currentChar == 127){
+                    currentChar = 159;
+                    continue;
+                }
+                index = TTF_GlyphIsProvided(font.font.get(), currentChar);
+                if (!index)
+                    Logger::log(LogLevel::WARNING, "There is no '%c' in the loaded font! ASCII: %i", currentChar, currentChar);
+            }
+        }
+    }
+    return success;
+}
+
+bool GraphicsSYSTEM::Construct_Text_Glyphs(FontComponent& font, int font_size){
+    bool success = true;
+    const int character_count = 128;
+    if(Create_Texture(font.glyphs, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, font_size*character_count, font_size)){
+        Set_Render_Target(font.glyphs);
+        SDL_SetTextureBlendMode(font.glyphs.texture.get(), SDL_BLENDMODE_BLEND);
+        SDL_Color text_color = {255,255,255,255};
+        int x = 0;
+        for(int i=0; i<character_count; i++){
+            const char character[] = { static_cast<char>(i), '\0' };
+            SDL_Surface* surface = TTF_RenderText_Solid(font.font.get(), character, text_color);
+            if( surface == NULL ){
+                Logger::log(LogLevel::WARNING,"Unable to render text surface for character %s! SDL_ttf Error: %s ", character, TTF_GetError());
+                continue;
+            }
+            SDL_Texture* char_texture = SDL_CreateTextureFromSurface( renderer, surface );
+            if(char_texture == NULL){
+                Logger::log(LogLevel::ERROR,"Unable to create texture from surface for character %s!SDL Error: %s", character, SDL_GetError());
+                continue;
+            }
+            SDL_Rect renderQuad = { x, 0, surface->w, surface->h };
+            font.glyph_clips.at(i) = renderQuad;
+            Logger::log(LogLevel::INFO,"Font Glyph: %s constructed with w:%d, h:%d", character, surface->w, surface->h);
+            SDL_RenderCopy(renderer, char_texture, NULL, &renderQuad);
+            x += surface->w;
+            SDL_FreeSurface( surface );
+        }
+        Set_Render_Target();
+        Logger::log(LogLevel::INFO,"Font Glyphs succesfully constructed");
+    }else{
+        success = false;
+    }
+    return success;
+}
 
 bool GraphicsSYSTEM::Create_Texture(TextureComponent& texture_component, Uint32 format,int access, int w,int h){
     bool success = true;
@@ -109,6 +149,7 @@ bool GraphicsSYSTEM::Create_Texture(TextureComponent& texture_component, Uint32 
         texture_component.texture = std::unique_ptr<SDL_Texture, TextureComponent::SDLTextureDeleter>(raw_texture);
         texture_component.width = w;
         texture_component.height = h;
+        Logger::log(LogLevel::INFO, "New texture succesfullly created with w:%d, h:%d", w, h);
     }
     return success;
 }
@@ -135,36 +176,37 @@ bool GraphicsSYSTEM::Create_Texture(TextureComponent& textureComponent, const st
     return success;
 }
 
-void GraphicsSYSTEM::Construct_Text_Sprites(const std::string& identifier, TTF_Font* font, int font_size){
-    TextureComponent character_texture;
-    const int character_count = 128;
-    if(Create_Texture(character_texture, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, font_size*character_count, font_size)){
-        Set_Render_Target(character_texture);
-        //SDL_SetTextureBlendMode(character_texture.texture.get(), SDL_BLENDMODE_BLEND);
-        SDL_Color text_color = {0,0,0,255};
-        int x = 0;
-        for(int i=0; i<character_count; i++){
-            
-            const char character[] = { static_cast<char>(i), '\0' };
-            SDL_Surface* surface = TTF_RenderText_Solid(font, character, text_color);
-            if( surface == NULL ){
-                Logger::log(LogLevel::ERROR,"Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
-            }
-            else{
-                SDL_Texture* char_texture = SDL_CreateTextureFromSurface( renderer, surface );
-                if(char_texture == NULL){
-                    Logger::log(LogLevel::ERROR,"Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError());
-                }
-                Logger::log(LogLevel::INFO,"character: %s, width: %d, height:%d", character, surface->w, surface->h);
-                SDL_Rect renderQuad = { x, 0, surface->w, surface->h };
-                
-                SDL_RenderCopy(renderer, char_texture, NULL, &renderQuad);
-                x += surface->w;
-                SDL_FreeSurface( surface );
-            }
+
+void GraphicsSYSTEM::Register_Font(const std::string& identifier, FontComponent& font){
+    if(fonts.find(identifier) != fonts.end()){
+        Logger::log(LogLevel::ERROR,"Unable to register font with identifier %s!", identifier.c_str());   
+    }else{
+        fonts[identifier] = std::move(font);
+        Logger::log(LogLevel::INFO,"Font identifier %s registered", identifier.c_str());  
+    }
+}
+
+size_t GraphicsSYSTEM::Register_Texture(const std::string& identifier, TextureComponent& texture){
+    if(texture_array.exists(identifier)){
+        Logger::log(LogLevel::ERROR,"Unable to register texture from file: identifier %s conflict error", identifier.c_str());
+        return 0;            
+    }
+    size_t index = texture_array.add(identifier, texture);
+    Logger::log(LogLevel::INFO,"Texture with identifier %s identified with index %d", identifier.c_str(), index);  
+    return 0;
+}
+
+size_t GraphicsSYSTEM::Register_Texture_From_File(const std::string& identifier, const std::string& path){
+    if(texture_array.exists(identifier)){
+        Logger::log(LogLevel::ERROR,"Unable to register texture from file: identifier %s conflict error", identifier.c_str());
+        return 0;            
+    }
+    else{
+        TextureComponent textureComp;
+        if(Create_Texture(textureComp, path)){
+            return Register_Texture(identifier, textureComp);
         }
-        Set_Render_Target();
-        Register_Texture(identifier, character_texture);
+        return 0;
     }
 }
 
@@ -177,7 +219,7 @@ void GraphicsSYSTEM::Set_Render_Target(){
 
 void GraphicsSYSTEM::Set_Renderer_Color(SDL_Color color){SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);}
 
-void GraphicsSYSTEM::Draw_Rect(SDL_Rect& rect, SDL_Color color){
+void GraphicsSYSTEM::Draw_Rect(const SDL_Rect& rect, SDL_Color color){
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     SDL_RenderDrawRect(renderer, &rect);
 }
@@ -203,71 +245,26 @@ void GraphicsSYSTEM::Draw_Circle(SDL_Point position, unsigned int radius, SDL_Co
     }
 }
 
-size_t GraphicsSYSTEM::Register_Texture(const std::string& identifier, TextureComponent& texture){
-    if(texture_identifiers.find(identifier) != texture_identifiers.end()){
-        Logger::log(LogLevel::ERROR,"Unable to register texture from file: identifier %s conflict error", identifier.c_str());
-        return 0;     
-    }
-    textures[texture_index] = std::move(texture);
-    texture_identifiers[identifier] = texture_index;
-    Logger::log(LogLevel::INFO,"Texture with identifier %s identified with index %d", identifier.c_str(), texture_index);  
-    texture_index++;
-    return texture_identifiers[identifier];
-}
-
-size_t GraphicsSYSTEM::Register_Texture_From_File(const std::string& identifier, const std::string& path){
-    if(texture_identifiers.find(identifier) != texture_identifiers.end()){
-        Logger::log(LogLevel::ERROR,"Unable to register texture from file: identifier %s conflict error", identifier.c_str());
-        return 0; 
-    }
-    else{
-        TextureComponent textureComp;
-        if(Create_Texture(textureComp, path)){
-            return Register_Texture(identifier, textureComp);
-        }
-        return 0;
-    }
-}
 
 size_t GraphicsSYSTEM::Get_Texture_By_Identifier(const std::string& identifier){
-    if(texture_identifiers.find(identifier) == texture_identifiers.end()){
+    if(!texture_array.exists(identifier)){
         Logger::log(LogLevel::ERROR,"Getting texture failed with identifier %s", identifier.c_str());
-        return 0;    
+        return 0;            
     }else{
-        return texture_identifiers[identifier];
+        return texture_array.get_index(identifier);
     }
 }
 
 void GraphicsSYSTEM::Set_RenderInfo_Texture(const std::string& identifier, RenderInfoComponent& renderInfo)
 {
-    if(texture_identifiers.find(identifier) == texture_identifiers.end()){
+    if(!texture_array.exists(identifier)){
         Logger::log(LogLevel::ERROR,"Unable to set texture to renderInfo, identifier %s not found", identifier.c_str());     
     }
     else{
-        size_t index = texture_identifiers.at(identifier);
+        size_t index = texture_array.get_index(identifier);
         renderInfo.index = index;
         Logger::log(LogLevel::INFO,"RenderInfo index set by identifier %s with index value %d", identifier.c_str(), index);
     }
-}
-
-bool GraphicsSYSTEM::Create_Texture_From_String(TextureComponent& textureComponent, const std::string& texture_text, const std::string& font, SDL_Color text_color){
-    SDL_Surface* textSurface = TTF_RenderText_Solid(fonts.at(font),texture_text.c_str(), text_color);
-    if( textSurface == NULL ){
-        Logger::log(LogLevel::ERROR,"Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
-    }
-    else{
-        SDL_Texture* raw_texture = SDL_CreateTextureFromSurface( renderer, textSurface );
-        if(raw_texture == NULL){
-            Logger::log(LogLevel::ERROR,"Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError());
-        }
-        else{
-            textureComponent.texture = std::unique_ptr<SDL_Texture, TextureComponent::SDLTextureDeleter>(raw_texture);
-            textureComponent.width = textSurface->w;
-            textureComponent.height = textSurface->h;
-        }
-        SDL_FreeSurface( textSurface );
-    }      
-    return textureComponent.texture != NULL;
 }
 
 void GraphicsSYSTEM::Draw_Texture(const TransformComponent& transformComponent, const TextureComponent& textureComponent, double scale, const SDL_Rect* clip,
@@ -283,6 +280,18 @@ void GraphicsSYSTEM::Draw_Texture(const TransformComponent& transformComponent, 
 		clip, &renderQuad, transformComponent.angle, center, flip);
 }
 
+            
+void GraphicsSYSTEM::Draw_Text(const TransformComponent& transform, const std::string& text, const SDL_Color color, const std::string& identifier){
+    TransformComponent tmp_transform = transform;
+    const TextureComponent& glyph = fonts.at(identifier).glyphs;
+    SDL_SetTextureColorMod(glyph.texture.get(), color.r, color.g, color.b);
+    for(char character: text){
+        SDL_Rect char_rect = fonts.at(identifier).glyph_clips.at(character);
+        Draw_Texture(tmp_transform, glyph, 1.0, &char_rect);
+        tmp_transform.x += char_rect.w;
+    }
+}
+
 void GraphicsSYSTEM::Draw_RenderComp(const TransformComponent& transform, const RenderInfoComponent& renderInfo){
 
     const SDL_Rect* clip = NULL;
@@ -292,7 +301,7 @@ void GraphicsSYSTEM::Draw_RenderComp(const TransformComponent& transform, const 
     TransformComponent transform_ = transform;
     transform_.x += renderInfo.offset_x; 
     transform_.y += renderInfo.offset_y;
-    Draw_Texture(transform_, textures[renderInfo.index], renderInfo.scale, clip);
+    Draw_Texture(transform_, texture_array[renderInfo.index], renderInfo.scale, clip);
 }
 
 void GraphicsSYSTEM::Render_Clear(){
@@ -308,10 +317,6 @@ void GraphicsSYSTEM::Render(){
     for(std::function<void(void)> render_task : render_tasks){
         render_task();
     }
-}
-
-void GraphicsSYSTEM::Update_Texture_From_Text(Entity ID, const std::string& text, const std::string& font, SDL_Color text_color){
-    Create_Texture_From_String(engine.Get_ComponentSYSTEM().Get_Component<TextureComponent>(ID), text, font, text_color);
 }
 
 void GraphicsSYSTEM::Push_Render_Task(const std::string& task_identifier, std::function<void(void)> task){
@@ -331,16 +336,13 @@ void GraphicsSYSTEM::Render_Scene(Scene& scene){
 
     SDL_Point cell_count = scene.grid.Get_Cell_Counts();
 
-    TextureComponent textTexture;
-    Create_Texture_From_String(textTexture, std::to_string(0));
     for(int j=0; j<cell_count.y; j++){
         for(int i=0; i<cell_count.x; i++){
             SDL_Rect cell_rect = scene.grid.Get_Cell_Rect(i,j);
             Draw_Rect(cell_rect, {0,0,0, 255});
             size_t entity_count = scene.grid.Get_Cell(i,j).size();
-            //Load_Texture_From_String(textTexture, std::to_string(entity_count));
             TransformComponent text_transform = TransformComponent(cell_rect.x+5, cell_rect.y+5, 0);
-            Draw_Texture(text_transform, textTexture);
+            Draw_Text(text_transform, std::to_string(entity_count));
         }
     }
 
@@ -357,7 +359,4 @@ void GraphicsSYSTEM::Render_Scene(Scene& scene){
             SYSTEM_graphics.Draw_Rect(rigid_body.rect);
         }
     }
-    
-    size_t char_index = texture_identifiers.at("default_font");
-    Draw_Texture(TransformComponent(0,0,0), textures[char_index]);
 }
